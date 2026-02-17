@@ -1,32 +1,24 @@
-# TiPowerUp Extension Template
+# Dark mode Extension
 
-A starter template for creating TastyIgniter extensions.
+A custom TastyIgniter extension
 
-## Usage
-
-### 1. Clone the Template
+## Installation
 
 ```bash
-git clone https://github.com/tipowerup/ti-ext-template.git my-extension
-cd my-extension
-rm -rf .git
+composer require tipowerup/ti-ext-darkmode
 ```
 
-### 2. Run Setup
+Then install in TastyIgniter:
 
 ```bash
-php setup.php
+php artisan igniter:extension-install tipowerup.darkmode
 ```
 
-The wizard will prompt for:
+## Requirements
 
-| Prompt | Example |
-|--------|---------|
-| Extension name | `My Awesome Extension` |
-| Extension slug | `my-extension` |
-| Vendor name | `tipowerup` |
-| PHP namespace | `Tipowerup\MyExtension` |
-| Description | `Does awesome things` |
-| License type | `1` (Free) or `2` (Paid) |
+- TastyIgniter v4.0+
+- PHP 8.2+
 
-🎉 **That's it!** Now go build something awesome! 🚀
+## License
+
+See [LICENSE.md](LICENSE.md)

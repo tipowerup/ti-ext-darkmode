@@ -1,7 +1,7 @@
 {
-    "name": "tipowerup/ti-ext-template",
+    "name": "tipowerup/ti-ext-darkmode",
     "type": "tastyigniter-package",
-    "description": "TastyIgniter extension template for TiPowerUp",
+    "description": "A custom TastyIgniter extension",
     "license": "MIT",
     "authors": [
         {
@@ -22,18 +22,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Tipowerup\\Template\\": "src/"
+            "Tipowerup\\Darkmode\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Tipowerup\\Template\\Tests\\": "tests/"
+            "Tipowerup\\Darkmode\\Tests\\": "tests/"
         }
     },
     "extra": {
         "tastyigniter-extension": {
-            "code": "tipowerup.template",
-            "name": "TiPowerUp Template",
+            "code": "tipowerup.darkmode",
+            "name": "Dark mode Extension",
             "icon": {
                 "class": "fa fa-puzzle-piece",
                 "color": "#FFFFFF",

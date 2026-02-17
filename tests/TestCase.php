@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tipowerup\Template\Tests;
+namespace Tipowerup\Darkmode\Tests;
 
 use Tipowerup\Testbench\TestCase as BaseTestCase;
 
@@ -15,6 +15,6 @@ abstract class TestCase extends BaseTestCase
 
     protected function getExtensionProviders(): array
     {
-        return [\Tipowerup\Template\Extension::class];
+        return [\Tipowerup\Darkmode\Extension::class];
     }
 }
