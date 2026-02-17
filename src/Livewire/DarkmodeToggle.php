@@ -7,10 +7,19 @@ namespace Tipowerup\Darkmode\Livewire;
 use Igniter\Main\Traits\ConfigurableComponent;
 use Illuminate\View\View;
 use Livewire\Component;
+use Tipowerup\Darkmode\Models\Settings;
 
 final class DarkmodeToggle extends Component
 {
     use ConfigurableComponent;
+
+    public string $class = 'btn btn-outline-secondary';
+
+    public bool $showLabel = false;
+
+    public string $darkLabel = '';
+
+    public string $lightLabel = '';
 
     public static function componentMeta(): array
     {
@@ -21,8 +30,14 @@ final class DarkmodeToggle extends Component
         ];
     }
 
-    public function render(): View
+    public function render(): View|string
     {
+        if (!Settings::isEnabled() || !Settings::appliesToFrontend()) {
+            return <<<'HTML'
+            <span></span>
+            HTML;
+        }
+
         return view('tipowerup.darkmode::livewire.darkmode-toggle');
     }
 }

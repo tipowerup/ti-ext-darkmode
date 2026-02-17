@@ -2,6 +2,7 @@
     'use strict';
 
     var STORAGE_KEY = 'ti_darkmode';
+    var OVERRIDE_KEY = 'ti_darkmode_override';
     var config = (window.app && window.app.tiDarkmode) || {};
 
     var drOptions = {
@@ -38,11 +39,11 @@
         var sunriseMin = 720 - 4 * (lng + hourAngle / rad) - eqTime;
         var sunsetMin = 720 - 4 * (lng - hourAngle / rad) - eqTime;
 
-        // Offset for local timezone
+        // Convert UTC minutes to local: local = UTC - getTimezoneOffset()
         var tzOffset = date.getTimezoneOffset();
         return {
-            sunrise: sunriseMin + tzOffset,
-            sunset: sunsetMin + tzOffset
+            sunrise: sunriseMin - tzOffset,
+            sunset: sunsetMin - tzOffset
         };
     }
 
@@ -85,6 +86,16 @@
         return now >= times.sunset || now < times.sunrise;
     }
 
+    // Returns the current schedule period identifier.
+    // Changes when the schedule transitions (e.g. day→night or night→day).
+    function getSchedulePeriod() {
+        var scheduled = shouldScheduleEnable();
+        if (scheduled === null) {
+            return null;
+        }
+        return scheduled ? 'dark' : 'light';
+    }
+
     function shouldScheduleEnable() {
         if (!config.schedule_enabled) {
             return null; // No schedule
@@ -105,24 +116,62 @@
         localStorage.setItem(STORAGE_KEY, val);
     }
 
-    function shouldBeActive() {
-        var pref = getPreference();
+    // Store override with the current schedule period so it expires on transition
+    function setOverride(val) {
+        var period = getSchedulePeriod();
+        if (period) {
+            localStorage.setItem(OVERRIDE_KEY, JSON.stringify({ value: val, period: period }));
+        }
+        setPreference(val);
+    }
 
-        // Explicit user preference takes precedence
+    // Get override only if it's still valid for the current period
+    function getOverride() {
+        var raw = localStorage.getItem(OVERRIDE_KEY);
+        if (!raw) {
+            return null;
+        }
+        try {
+            var data = JSON.parse(raw);
+            var currentPeriod = getSchedulePeriod();
+            if (currentPeriod && data.period === currentPeriod) {
+                return data.value;
+            }
+            // Period changed — override expired, clear it
+            localStorage.removeItem(OVERRIDE_KEY);
+            return null;
+        } catch (e) {
+            localStorage.removeItem(OVERRIDE_KEY);
+            return null;
+        }
+    }
+
+    function shouldBeActive() {
+        var scheduled = shouldScheduleEnable();
+
+        // If schedule is active, check for a cycle-scoped override
+        if (scheduled !== null) {
+            var override = getOverride();
+            if (override === 'on') {
+                return true;
+            }
+            if (override === 'off') {
+                return false;
+            }
+            return scheduled;
+        }
+
+        // No schedule — use plain preference
+        var pref = getPreference();
         if (pref === 'on') {
             return true;
         }
-        if (pref === 'off') {
-            return false;
-        }
-
-        // No explicit preference: check schedule
-        var scheduled = shouldScheduleEnable();
-        return scheduled === true;
+        return false;
     }
 
     function enable() {
         if (typeof DarkReader !== 'undefined') {
+            DarkReader.setFetchMethod(window.fetch);
             DarkReader.enable(drOptions);
         }
         if (typeof window.__tiDmReady === 'function') {
@@ -149,11 +198,17 @@
 
     function toggle() {
         var isActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
+        var newState = isActive ? 'off' : 'on';
+
+        if (config.schedule_enabled) {
+            setOverride(newState);
+        } else {
+            setPreference(newState);
+        }
+
         if (isActive) {
-            setPreference('off');
             disable();
         } else {
-            setPreference('on');
             enable();
         }
 
@@ -174,32 +229,34 @@
         }
     };
 
+    // Sync across browser tabs when localStorage changes
+    window.addEventListener('storage', function (e) {
+        if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY) {
+            var wasActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
+            apply();
+            var isNowActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
+            if (wasActive !== isNowActive) {
+                document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
+                    detail: { enabled: isNowActive }, bubbles: true
+                }));
+            }
+        }
+    });
+
     // Initial application
     apply();
 
     // Schedule re-check every 60 seconds
     if (config.schedule_enabled) {
         window.TiDarkmode._interval = setInterval(function () {
-            var scheduled = shouldScheduleEnable();
-            if (scheduled === null) {
-                return;
-            }
+            var wasActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
+            apply();
+            var isNowActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
 
-            var isActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-            // Only auto-toggle if preference is not explicitly set, or matches schedule
-            var pref = getPreference();
-            if (pref === null || pref === undefined) {
-                if (scheduled && !isActive) {
-                    enable();
-                    document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
-                        detail: { enabled: true }, bubbles: true
-                    }));
-                } else if (!scheduled && isActive) {
-                    disable();
-                    document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
-                        detail: { enabled: false }, bubbles: true
-                    }));
-                }
+            if (wasActive !== isNowActive) {
+                document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
+                    detail: { enabled: isNowActive }, bubbles: true
+                }));
             }
         }, 60000);
     }

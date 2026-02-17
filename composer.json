@@ -1,16 +1,22 @@
 {
     "name": "tipowerup/ti-ext-darkmode",
     "type": "tastyigniter-package",
-    "description": "A custom TastyIgniter extension",
+    "description": "Adds dark mode to TastyIgniter admin and storefront with scheduling support.",
     "license": "MIT",
+    "keywords": [
+        "tastyigniter",
+        "dark-mode",
+        "darkreader",
+        "theme"
+    ],
     "authors": [
         {
-            "name": "TiPowerUp",
-            "email": "hello@tipowerup.com"
+            "name": "TI PowerUp Team",
+            "email": "support@tipowerup.com"
         }
     ],
     "require": {
-        "php": "^8.2",
+        "php": "^8.2 || ^8.3",
         "tastyigniter/core": "^v4.0"
     },
     "require-dev": {
@@ -33,11 +39,11 @@
     "extra": {
         "tastyigniter-extension": {
             "code": "tipowerup.darkmode",
-            "name": "Dark mode Extension",
+            "name": "Dark Mode",
             "icon": {
-                "class": "fa fa-puzzle-piece",
-                "color": "#FFFFFF",
-                "backgroundColor": "#FF4900"
+                "class": "fa fa-moon",
+                "color": "#FFF",
+                "backgroundColor": "#2D3748"
             },
             "homepage": "https://tipowerup.com"
         }
