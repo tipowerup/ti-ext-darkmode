@@ -39,5 +39,9 @@ To add a toggle button to your storefront theme, use the Livewire component:
 <livewire:tipowerup-darkmode::darkmode-toggle />
 ```
 
+# More from TI PowerUp
+
+For more premium extensions and themes for TastyIgniter like this, visit [tipowerup.com](https://tipowerup.com). Free and very affordable options with great discounts, reliable updates, and dedicated support.
+
 # License
 This extension is released under the [MIT License](LICENSE.md).
