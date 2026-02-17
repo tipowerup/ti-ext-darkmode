@@ -1,8 +1,9 @@
 # Introduction
-This extension adds dark mode support to your [TastyIgniter](https://tastyigniter.com) admin panel and storefront using the [DarkReader](https://darkreader.org/) library. It provides a seamless dark mode experience with per-user preference persistence and optional scheduling.
+This extension adds dark mode to the [TastyIgniter](https://tastyigniter.com) admin dashboard and any storefront theme using the [DarkReader](https://darkreader.org/) library. It works out of the box without theme-specific CSS — just enable and go. Includes per-user preference persistence and optional scheduling.
 
 # Features
-* Toggle dark mode on admin panel, storefront, or both.
+* Toggle dark mode on admin dashboard, storefront, or both.
+* Plug and play — works with any theme, no theme-specific CSS or setup needed.
 * Configurable brightness, contrast, and sepia levels via admin settings.
 * Anti-flicker loading prevents white flash on page load.
 * Admin toolbar toggle icon for quick switching.

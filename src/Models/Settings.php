@@ -67,4 +67,123 @@ class Settings extends Model
             'longitude' => (string) self::get('longitude', ''),
         ];
     }
+
+    public static function shouldScheduleBeActive(): bool
+    {
+        $config = self::darkreaderConfig();
+
+        if (!$config['schedule_enabled']) {
+            return false;
+        }
+
+        if ($config['schedule_type'] === 'sunset_sunrise') {
+            return self::isAfterSunset(
+                $config['latitude'],
+                $config['longitude']
+            );
+        }
+
+        return self::isInScheduleTimeRange(
+            $config['start_time'],
+            $config['end_time']
+        );
+    }
+
+    private static function isInScheduleTimeRange(string $startTime, string $endTime): bool
+    {
+        $start = explode(':', $startTime);
+        $end = explode(':', $endTime);
+
+        $startMinutes = (int) ($start[0] ?? 0) * 60 + (int) ($start[1] ?? 0);
+        $endMinutes = (int) ($end[0] ?? 0) * 60 + (int) ($end[1] ?? 0);
+
+        $now = new \DateTime;
+        $currentMinutes = (int) $now->format('H') * 60 + (int) $now->format('i');
+
+        // Handle overnight range (e.g., 20:00 → 06:00)
+        if ($startMinutes > $endMinutes) {
+            return $currentMinutes >= $startMinutes || $currentMinutes < $endMinutes;
+        }
+
+        return $currentMinutes >= $startMinutes && $currentMinutes < $endMinutes;
+    }
+
+    private static function isAfterSunset(string $latitude, string $longitude): bool
+    {
+        $lat = (float) $latitude;
+        $lng = (float) $longitude;
+
+        // If coordinates are invalid or both zero, return false
+        if (($lat === 0.0 && $lng === 0.0) || empty($latitude) || empty($longitude)) {
+            return false;
+        }
+
+        $now = new \DateTime;
+        $sunTimes = self::calcSunTimes($lat, $lng, $now);
+
+        $currentMinutes = (int) $now->format('H') * 60 + (int) $now->format('i');
+
+        // Dark between sunset and sunrise (overnight)
+        return $currentMinutes >= $sunTimes['sunset'] || $currentMinutes < $sunTimes['sunrise'];
+    }
+
+    /**
+     * NOAA solar calculation algorithm.
+     * Returns sunrise and sunset times in minutes from midnight.
+     *
+     * @param  float  $lat  Latitude
+     * @param  float  $lng  Longitude
+     * @param  \DateTime  $date  Date to calculate for
+     * @return array{sunrise: float, sunset: float}
+     */
+    private static function calcSunTimes(float $lat, float $lng, \DateTime $date): array
+    {
+        $rad = M_PI / 180;
+
+        // Calculate day of year
+        $startOfYear = new \DateTime($date->format('Y').'-01-01');
+        $dayOfYear = (int) $date->diff($startOfYear)->format('%a') + 1;
+
+        $gamma = (2 * M_PI / 365) * ($dayOfYear - 1);
+
+        // Equation of time in minutes
+        $eqTime = 229.18 * (0.000075 + 0.001868 * cos($gamma)
+            - 0.032077 * sin($gamma)
+            - 0.014615 * cos(2 * $gamma)
+            - 0.040849 * sin(2 * $gamma));
+
+        // Solar declination in radians
+        $decl = 0.006918 - 0.399912 * cos($gamma) + 0.070257 * sin($gamma)
+            - 0.006758 * cos(2 * $gamma) + 0.000907 * sin(2 * $gamma)
+            - 0.002697 * cos(3 * $gamma) + 0.00148 * sin(3 * $gamma);
+
+        $latRad = $lat * $rad;
+        $cosZenith = cos(90.833 * $rad);
+        $cosHA = ($cosZenith / (cos($latRad) * cos($decl))) - tan($latRad) * tan($decl);
+
+        // Handle polar night and polar day
+        if ($cosHA > 1) {
+            // Sun never rises (polar night) - always dark
+            return ['sunrise' => 1440, 'sunset' => 0];
+        }
+        if ($cosHA < -1) {
+            // Sun never sets (polar day) - always light
+            return ['sunrise' => 0, 'sunset' => 1440];
+        }
+
+        $hourAngle = acos($cosHA);
+
+        // Calculate sunrise and sunset in UTC minutes
+        $sunriseMin = 720 - 4 * ($lng + $hourAngle / $rad) - $eqTime;
+        $sunsetMin = 720 - 4 * ($lng - $hourAngle / $rad) - $eqTime;
+
+        // Convert UTC to local time using PHP's timezone offset
+        $tzOffsetSeconds = (int) $date->format('Z');
+        $tzOffsetMinutes = $tzOffsetSeconds / 60;
+
+        return [
+            'sunrise' => $sunriseMin + $tzOffsetMinutes,
+            'sunset' => $sunsetMin + $tzOffsetMinutes,
+        ];
+    }
 }

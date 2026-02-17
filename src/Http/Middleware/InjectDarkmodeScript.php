@@ -64,8 +64,10 @@ class InjectDarkmodeScript
             return;
         }
 
+        $scheduleHint = Settings::shouldScheduleBeActive() ? 'true' : 'false';
+
         $script = '<style id="ti-dm-af">html.ti-dm-pending{background:#181a1b!important;color-scheme:dark}html.ti-dm-pending body{visibility:hidden}</style>'
-            .'<script>(function(){if(localStorage.getItem("ti_darkmode")==="on"){document.documentElement.classList.add("ti-dm-pending")}var t=setTimeout(function(){document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")},3000);window.__tiDmReady=function(){clearTimeout(t);document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")}})()</script>';
+            .'<script>(function(){var s='.$scheduleHint.';if(localStorage.getItem("ti_darkmode")==="on"||(s&&localStorage.getItem("ti_darkmode")===null)){document.documentElement.classList.add("ti-dm-pending")}var t=setTimeout(function(){document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")},3000);window.__tiDmReady=function(){clearTimeout(t);document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")}})()</script>';
 
         $pos = stripos($content, '<head>');
         if ($pos !== false) {

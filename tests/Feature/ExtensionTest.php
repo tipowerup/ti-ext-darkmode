@@ -79,6 +79,68 @@ it('shows admin toolbar toggle by default', function (): void {
     expect(Settings::showAdminToolbarToggle())->toBeTrue();
 });
 
+it('reports schedule as inactive by default', function (): void {
+    expect(Settings::shouldScheduleBeActive())->toBeFalse();
+});
+
+it('reports time-based schedule as active during dark period', function (): void {
+    // Calculate time range that includes current time
+    $now = new DateTime;
+    $currentHour = (int) $now->format('H');
+    $currentMinute = (int) $now->format('i');
+
+    // Set start time 2 hours before now
+    $startHour = ($currentHour - 2 + 24) % 24;
+    $startTime = sprintf('%02d:%02d', $startHour, $currentMinute);
+
+    // Set end time 2 hours after now
+    $endHour = ($currentHour + 2) % 24;
+    $endTime = sprintf('%02d:%02d', $endHour, $currentMinute);
+
+    DB::table('extension_settings')->insert([
+        'item' => 'tipowerup_darkmode_settings',
+        'data' => json_encode([
+            'schedule_enabled' => true,
+            'schedule_type' => 'time',
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+        ]),
+    ]);
+
+    SettingsModel::clearInternalCache();
+
+    expect(Settings::shouldScheduleBeActive())->toBeTrue();
+});
+
+it('reports time-based schedule as inactive during light period', function (): void {
+    // Calculate time range that does NOT include current time
+    $now = new DateTime;
+    $currentHour = (int) $now->format('H');
+    $currentMinute = (int) $now->format('i');
+
+    // Set start time 2 hours from now
+    $startHour = ($currentHour + 2) % 24;
+    $startTime = sprintf('%02d:%02d', $startHour, $currentMinute);
+
+    // Set end time 4 hours from now
+    $endHour = ($currentHour + 4) % 24;
+    $endTime = sprintf('%02d:%02d', $endHour, $currentMinute);
+
+    DB::table('extension_settings')->insert([
+        'item' => 'tipowerup_darkmode_settings',
+        'data' => json_encode([
+            'schedule_enabled' => true,
+            'schedule_type' => 'time',
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+        ]),
+    ]);
+
+    SettingsModel::clearInternalCache();
+
+    expect(Settings::shouldScheduleBeActive())->toBeFalse();
+});
+
 it('reads settings from database', function (): void {
     DB::table('extension_settings')->insert([
         'item' => 'tipowerup_darkmode_settings',
@@ -171,5 +233,60 @@ describe('InjectDarkmodeScript middleware', function (): void {
 
         expect($result->getContent())->not->toContain('ti-dm-pending')
             ->and($result->getContent())->toBe('{"data": true}');
+    });
+
+    it('injects schedule hint into anti-flicker script when schedule is active', function (): void {
+        // Calculate time range that includes current time
+        $now = new DateTime;
+        $currentHour = (int) $now->format('H');
+        $currentMinute = (int) $now->format('i');
+
+        // Set start time 2 hours before now
+        $startHour = ($currentHour - 2 + 24) % 24;
+        $startTime = sprintf('%02d:%02d', $startHour, $currentMinute);
+
+        // Set end time 2 hours after now
+        $endHour = ($currentHour + 2) % 24;
+        $endTime = sprintf('%02d:%02d', $endHour, $currentMinute);
+
+        DB::table('extension_settings')->insert([
+            'item' => 'tipowerup_darkmode_settings',
+            'data' => json_encode([
+                'is_enabled' => true,
+                'apply_to' => 'both',
+                'schedule_enabled' => true,
+                'schedule_type' => 'time',
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+            ]),
+        ]);
+        SettingsModel::clearInternalCache();
+
+        $request = Illuminate\Http\Request::create('/');
+        $this->response = new Illuminate\Http\Response('<html><head><title>Test</title></head><body></body></html>');
+        $this->response->headers->set('Content-Type', 'text/html');
+
+        $result = $this->middleware->handle($request, $this->next);
+
+        expect($result->getContent())->toContain('var s=true');
+    });
+
+    it('injects false schedule hint when schedule is inactive', function (): void {
+        DB::table('extension_settings')->insert([
+            'item' => 'tipowerup_darkmode_settings',
+            'data' => json_encode([
+                'is_enabled' => true,
+                'apply_to' => 'both',
+            ]),
+        ]);
+        SettingsModel::clearInternalCache();
+
+        $request = Illuminate\Http\Request::create('/');
+        $this->response = new Illuminate\Http\Response('<html><head><title>Test</title></head><body></body></html>');
+        $this->response->headers->set('Content-Type', 'text/html');
+
+        $result = $this->middleware->handle($request, $this->next);
+
+        expect($result->getContent())->toContain('var s=false');
     });
 });
