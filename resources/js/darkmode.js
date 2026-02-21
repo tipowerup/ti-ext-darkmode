@@ -3,6 +3,7 @@
 
     var STORAGE_KEY = 'ti_darkmode';
     var OVERRIDE_KEY = 'ti_darkmode_override';
+    var ACTIVE_KEY = 'ti_darkmode_active';
     var config = (window.app && window.app.tiDarkmode) || {};
 
     var drOptions = {
@@ -170,6 +171,7 @@
     }
 
     function enable() {
+        localStorage.setItem(ACTIVE_KEY, '1');
         if (typeof DarkReader !== 'undefined') {
             DarkReader.setFetchMethod(window.fetch);
             DarkReader.enable(drOptions);
@@ -180,6 +182,7 @@
     }
 
     function disable() {
+        localStorage.removeItem(ACTIVE_KEY);
         if (typeof DarkReader !== 'undefined') {
             DarkReader.disable();
         }
@@ -231,7 +234,7 @@
 
     // Sync across browser tabs when localStorage changes
     window.addEventListener('storage', function (e) {
-        if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY) {
+        if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY || e.key === ACTIVE_KEY) {
             var wasActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
             apply();
             var isNowActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
