@@ -33,8 +33,7 @@ class InjectDarkmodeScript
 
     protected function shouldInject(IlluminateResponse $response): bool
     {
-        $contentType = $response->headers->get('Content-Type', '');
-        if (!str_contains($contentType, 'text/html')) {
+        if (!str_contains($response->headers->get('Content-Type') ?? '', 'text/html')) {
             return false;
         }
 
@@ -42,17 +41,9 @@ class InjectDarkmodeScript
             return false;
         }
 
-        $isAdmin = Igniter::runningInAdmin();
-
-        if ($isAdmin && !Settings::appliesToAdmin()) {
-            return false;
-        }
-
-        if (!$isAdmin && !Settings::appliesToFrontend()) {
-            return false;
-        }
-
-        return true;
+        return Igniter::runningInAdmin()
+            ? Settings::appliesToAdmin()
+            : Settings::appliesToFrontend();
     }
 
     protected function injectAntiFlickerScript(IlluminateResponse $response): void
@@ -66,8 +57,11 @@ class InjectDarkmodeScript
 
         $scheduleHint = Settings::shouldScheduleBeActive() ? 'true' : 'false';
 
+        // Anti-flicker: hides body with dark background, checks localStorage for active state
+        // (ti_darkmode_active → preference → schedule hint), then exposes __tiDmReady() for
+        // darkmode.js to call once DarkReader is ready. A 3s safety timeout prevents permanent hiding.
         $script = '<style id="ti-dm-af">html.ti-dm-pending{background:#181a1b!important;color-scheme:dark}html.ti-dm-pending body{visibility:hidden}</style>'
-            .'<script>(function(){var s='.$scheduleHint.';if(localStorage.getItem("ti_darkmode")==="on"||(s&&localStorage.getItem("ti_darkmode")===null)){document.documentElement.classList.add("ti-dm-pending")}var t=setTimeout(function(){document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")},3000);window.__tiDmReady=function(){clearTimeout(t);document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")}})()</script>';
+            .'<script>(function(){var a=localStorage.getItem("ti_darkmode_active");var s='.$scheduleHint.';if(a==="1"||(a===null&&(localStorage.getItem("ti_darkmode")==="on"||(s&&localStorage.getItem("ti_darkmode")===null)))){document.documentElement.classList.add("ti-dm-pending")}var t=setTimeout(function(){document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")},3000);window.__tiDmReady=function(){clearTimeout(t);if(document.body){document.body.style.visibility="visible"}requestAnimationFrame(function(){document.documentElement.classList.remove("ti-dm-pending");document.body&&(document.body.style.visibility="")})}})()</script>';
 
         $pos = stripos($content, '<head>');
         if ($pos !== false) {
