@@ -33,16 +33,12 @@ class Settings extends Model
 
     public static function appliesToAdmin(): bool
     {
-        $applyTo = self::appliesTo();
-
-        return $applyTo === 'admin' || $applyTo === 'both';
+        return in_array(self::appliesTo(), ['admin', 'both'], true);
     }
 
     public static function appliesToFrontend(): bool
     {
-        $applyTo = self::appliesTo();
-
-        return $applyTo === 'frontend' || $applyTo === 'both';
+        return in_array(self::appliesTo(), ['frontend', 'both'], true);
     }
 
     public static function showAdminToolbarToggle(): bool
@@ -70,22 +66,20 @@ class Settings extends Model
 
     public static function shouldScheduleBeActive(): bool
     {
-        $config = self::darkreaderConfig();
-
-        if (!$config['schedule_enabled']) {
+        if (!(bool) self::get('schedule_enabled', false)) {
             return false;
         }
 
-        if ($config['schedule_type'] === 'sunset_sunrise') {
+        if ((string) self::get('schedule_type', 'time') === 'sunset_sunrise') {
             return self::isAfterSunset(
-                $config['latitude'],
-                $config['longitude']
+                (string) self::get('latitude', ''),
+                (string) self::get('longitude', '')
             );
         }
 
         return self::isInScheduleTimeRange(
-            $config['start_time'],
-            $config['end_time']
+            (string) self::get('start_time', '20:00'),
+            (string) self::get('end_time', '06:00')
         );
     }
 
@@ -113,8 +107,7 @@ class Settings extends Model
         $lat = (float) $latitude;
         $lng = (float) $longitude;
 
-        // If coordinates are invalid or both zero, return false
-        if (($lat === 0.0 && $lng === 0.0) || empty($latitude) || empty($longitude)) {
+        if ($latitude === '' || $longitude === '') {
             return false;
         }
 
@@ -129,7 +122,10 @@ class Settings extends Model
 
     /**
      * NOAA solar calculation algorithm.
-     * Returns sunrise and sunset times in minutes from midnight.
+     * Returns sunrise and sunset times in minutes from midnight, normalized to [0, 1440).
+     *
+     * IMPORTANT: Duplicated in resources/js/darkmode.js::calcSunTimes().
+     * Changes here must be mirrored there.
      *
      * @param  float  $lat  Latitude
      * @param  float  $lng  Longitude
@@ -182,8 +178,8 @@ class Settings extends Model
         $tzOffsetMinutes = $tzOffsetSeconds / 60;
 
         return [
-            'sunrise' => $sunriseMin + $tzOffsetMinutes,
-            'sunset' => $sunsetMin + $tzOffsetMinutes,
+            'sunrise' => fmod($sunriseMin + $tzOffsetMinutes + 1440, 1440),
+            'sunset' => fmod($sunsetMin + $tzOffsetMinutes + 1440, 1440),
         ];
     }
 }

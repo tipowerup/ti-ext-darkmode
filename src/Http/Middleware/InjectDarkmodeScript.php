@@ -33,8 +33,7 @@ class InjectDarkmodeScript
 
     protected function shouldInject(IlluminateResponse $response): bool
     {
-        $contentType = $response->headers->get('Content-Type', '');
-        if (!str_contains($contentType, 'text/html')) {
+        if (!str_contains($response->headers->get('Content-Type') ?? '', 'text/html')) {
             return false;
         }
 
@@ -42,17 +41,9 @@ class InjectDarkmodeScript
             return false;
         }
 
-        $isAdmin = Igniter::runningInAdmin();
-
-        if ($isAdmin && !Settings::appliesToAdmin()) {
-            return false;
-        }
-
-        if (!$isAdmin && !Settings::appliesToFrontend()) {
-            return false;
-        }
-
-        return true;
+        return Igniter::runningInAdmin()
+            ? Settings::appliesToAdmin()
+            : Settings::appliesToFrontend();
     }
 
     protected function injectAntiFlickerScript(IlluminateResponse $response): void

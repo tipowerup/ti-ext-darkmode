@@ -48,11 +48,6 @@ class Extension extends BaseExtension
         $this->registerAdminToolbarToggle();
     }
 
-    public function registerNavigation(): array
-    {
-        return [];
-    }
-
     #[Override]
     public function registerPermissions(): array
     {
@@ -133,7 +128,7 @@ class Extension extends BaseExtension
             if (!Settings::isEnabled() || !Settings::appliesToAdmin() || !Settings::showAdminToolbarToggle()) {
                 return;
             }
-        } catch (\Throwable) {
+        } catch (\Illuminate\Database\QueryException) {
             return;
         }
 

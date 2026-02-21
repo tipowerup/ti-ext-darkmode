@@ -1,9 +1,12 @@
 (function () {
     'use strict';
 
+    // localStorage key names — must match InjectDarkmodeScript.php anti-flicker keys
     var STORAGE_KEY = 'ti_darkmode';
     var OVERRIDE_KEY = 'ti_darkmode_override';
     var ACTIVE_KEY = 'ti_darkmode_active';
+    var SCHEDULE_CHECK_MS = 60000;
+
     var config = (window.app && window.app.tiDarkmode) || {};
 
     var drOptions = {
@@ -12,7 +15,22 @@
         sepia: config.sepia || 10
     };
 
-    // NOAA solar calculation (simplified)
+    function isDarkReaderAvailable() {
+        return typeof DarkReader !== 'undefined';
+    }
+
+    function isDarkReaderEnabled() {
+        return isDarkReaderAvailable() && DarkReader.isEnabled();
+    }
+
+    function dispatchToggleEvent(enabled) {
+        document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
+            detail: { enabled: enabled }, bubbles: true
+        }));
+    }
+
+    // NOAA solar calculation (simplified).
+    // IMPORTANT: Duplicated in Settings.php::calcSunTimes(). Keep in sync.
     function calcSunTimes(lat, lng, date) {
         var rad = Math.PI / 180;
         var dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
@@ -43,8 +61,8 @@
         // Convert UTC minutes to local: local = UTC - getTimezoneOffset()
         var tzOffset = date.getTimezoneOffset();
         return {
-            sunrise: sunriseMin - tzOffset,
-            sunset: sunsetMin - tzOffset
+            sunrise: ((sunriseMin - tzOffset) % 1440 + 1440) % 1440,
+            sunset: ((sunsetMin - tzOffset) % 1440 + 1440) % 1440
         };
     }
 
@@ -117,7 +135,8 @@
         localStorage.setItem(STORAGE_KEY, val);
     }
 
-    // Store override with the current schedule period so it expires on transition
+    // Store override with the current schedule period so it expires on transition.
+    // Also persists as plain preference for cross-tab sync compatibility.
     function setOverride(val) {
         var period = getSchedulePeriod();
         if (period) {
@@ -172,8 +191,7 @@
 
     function enable() {
         localStorage.setItem(ACTIVE_KEY, '1');
-        if (typeof DarkReader !== 'undefined') {
-            DarkReader.setFetchMethod(window.fetch);
+        if (isDarkReaderAvailable()) {
             DarkReader.enable(drOptions);
         }
         if (typeof window.__tiDmReady === 'function') {
@@ -183,7 +201,7 @@
 
     function disable() {
         localStorage.removeItem(ACTIVE_KEY);
-        if (typeof DarkReader !== 'undefined') {
+        if (isDarkReaderAvailable()) {
             DarkReader.disable();
         }
         if (typeof window.__tiDmReady === 'function') {
@@ -199,8 +217,17 @@
         }
     }
 
+    function applyAndNotify() {
+        var wasActive = isDarkReaderEnabled();
+        apply();
+        var isNowActive = isDarkReaderEnabled();
+        if (wasActive !== isNowActive) {
+            dispatchToggleEvent(isNowActive);
+        }
+    }
+
     function toggle() {
-        var isActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
+        var isActive = isDarkReaderEnabled();
         var newState = isActive ? 'off' : 'on';
 
         if (config.schedule_enabled) {
@@ -215,11 +242,17 @@
             enable();
         }
 
-        // Dispatch event for Alpine/Livewire reactivity
-        document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
-            detail: { enabled: !isActive },
-            bubbles: true
-        }));
+        dispatchToggleEvent(!isActive);
+    }
+
+    // Set fetch method once at initialization
+    if (isDarkReaderAvailable()) {
+        DarkReader.setFetchMethod(window.fetch);
+    }
+
+    // Clear previous interval if re-initializing (SPA/Livewire navigation)
+    if (window.TiDarkmode && window.TiDarkmode._interval) {
+        clearInterval(window.TiDarkmode._interval);
     }
 
     // Expose API
@@ -227,22 +260,13 @@
         toggle: toggle,
         enable: enable,
         disable: disable,
-        isActive: function () {
-            return typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-        }
+        isActive: isDarkReaderEnabled
     };
 
     // Sync across browser tabs when localStorage changes
     window.addEventListener('storage', function (e) {
         if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY || e.key === ACTIVE_KEY) {
-            var wasActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-            apply();
-            var isNowActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-            if (wasActive !== isNowActive) {
-                document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
-                    detail: { enabled: isNowActive }, bubbles: true
-                }));
-            }
+            applyAndNotify();
         }
     });
 
@@ -251,16 +275,6 @@
 
     // Schedule re-check every 60 seconds
     if (config.schedule_enabled) {
-        window.TiDarkmode._interval = setInterval(function () {
-            var wasActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-            apply();
-            var isNowActive = typeof DarkReader !== 'undefined' && DarkReader.isEnabled();
-
-            if (wasActive !== isNowActive) {
-                document.dispatchEvent(new CustomEvent('ti:darkmode-toggled', {
-                    detail: { enabled: isNowActive }, bubbles: true
-                }));
-            }
-        }, 60000);
+        window.TiDarkmode._interval = setInterval(applyAndNotify, SCHEDULE_CHECK_MS);
     }
 })();
