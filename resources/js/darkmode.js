@@ -250,9 +250,20 @@
         DarkReader.setFetchMethod(window.fetch);
     }
 
-    // Clear previous interval if re-initializing (SPA/Livewire navigation)
-    if (window.TiDarkmode && window.TiDarkmode._interval) {
-        clearInterval(window.TiDarkmode._interval);
+    // Clean up previous instance if re-initializing (SPA/Livewire navigation)
+    if (window.TiDarkmode) {
+        if (window.TiDarkmode._interval) {
+            clearInterval(window.TiDarkmode._interval);
+        }
+        if (window.TiDarkmode._onStorage) {
+            window.removeEventListener('storage', window.TiDarkmode._onStorage);
+        }
+    }
+
+    function onStorage(e) {
+        if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY || e.key === ACTIVE_KEY) {
+            applyAndNotify();
+        }
     }
 
     // Expose API
@@ -260,15 +271,12 @@
         toggle: toggle,
         enable: enable,
         disable: disable,
-        isActive: isDarkReaderEnabled
+        isActive: isDarkReaderEnabled,
+        _onStorage: onStorage
     };
 
     // Sync across browser tabs when localStorage changes
-    window.addEventListener('storage', function (e) {
-        if (e.key === STORAGE_KEY || e.key === OVERRIDE_KEY || e.key === ACTIVE_KEY) {
-            applyAndNotify();
-        }
-    });
+    window.addEventListener('storage', onStorage);
 
     // Initial application
     apply();
