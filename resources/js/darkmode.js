@@ -120,6 +120,10 @@
             return null; // No schedule
         }
 
+        if (config.schedule_type === 'system') {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
         if (config.schedule_type === 'sunset_sunrise') {
             return isInSunsetSunrise();
         }
@@ -258,6 +262,9 @@
         if (window.TiDarkmode._onStorage) {
             window.removeEventListener('storage', window.TiDarkmode._onStorage);
         }
+        if (window.TiDarkmode._colorSchemeMedia && window.TiDarkmode._onColorScheme) {
+            window.TiDarkmode._colorSchemeMedia.removeEventListener('change', window.TiDarkmode._onColorScheme);
+        }
     }
 
     function onStorage(e) {
@@ -281,8 +288,16 @@
     // Initial application
     apply();
 
-    // Schedule re-check every 60 seconds
-    if (config.schedule_enabled) {
+    // Schedule re-check every 60 seconds (not needed for system — matchMedia handles it)
+    if (config.schedule_enabled && config.schedule_type !== 'system') {
         window.TiDarkmode._interval = setInterval(applyAndNotify, SCHEDULE_CHECK_MS);
+    }
+
+    // Listen for OS colour-scheme changes when system schedule is active
+    if (config.schedule_enabled && config.schedule_type === 'system') {
+        var colorSchemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+        colorSchemeMedia.addEventListener('change', applyAndNotify);
+        window.TiDarkmode._onColorScheme = applyAndNotify;
+        window.TiDarkmode._colorSchemeMedia = colorSchemeMedia;
     }
 })();

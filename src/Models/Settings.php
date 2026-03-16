@@ -64,13 +64,24 @@ class Settings extends Model
         ];
     }
 
+    public static function scheduleType(): string
+    {
+        return (string) self::get('schedule_type', 'time');
+    }
+
     public static function shouldScheduleBeActive(): bool
     {
-        if (!(bool) self::get('schedule_enabled', false)) {
+        if (! (bool) self::get('schedule_enabled', false)) {
             return false;
         }
 
-        if ((string) self::get('schedule_type', 'time') === 'sunset_sunrise') {
+        $scheduleType = self::scheduleType();
+
+        if ($scheduleType === 'system') {
+            return false;
+        }
+
+        if ($scheduleType === 'sunset_sunrise') {
             return self::isAfterSunset(
                 (string) self::get('latitude', ''),
                 (string) self::get('longitude', '')

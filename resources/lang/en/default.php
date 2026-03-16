@@ -29,6 +29,7 @@ return [
     'label_schedule_type' => 'Schedule Type',
     'text_time' => 'Time Based',
     'text_sunset_sunrise' => 'Sunset / Sunrise',
+    'text_system' => 'System',
 
     'label_start_time' => 'Start Time',
     'help_start_time' => 'Time to enable dark mode (e.g. 20:00).',

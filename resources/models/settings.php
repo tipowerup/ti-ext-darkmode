@@ -70,11 +70,12 @@ return [
                 'span' => 'left',
             ],
             'schedule_type' => [
-                'label' => 'lang:tipowerup.darkmode::default.label_schedule_type',
+                'label' => 'lang:tipowerup.dar`kmode::default.label_schedule_type',
                 'type' => 'radiotoggle',
-                'default' => 'time',
+                'default' => 'system',
                 'span' => 'right',
                 'options' => [
+                    'system' => 'lang:tipowerup.darkmode::default.text_system',
                     'time' => 'lang:tipowerup.darkmode::default.text_time',
                     'sunset_sunrise' => 'lang:tipowerup.darkmode::default.text_sunset_sunrise',
                 ],
@@ -140,7 +141,7 @@ return [
             ['contrast', 'lang:tipowerup.darkmode::default.label_contrast', 'nullable|integer|min:0|max:200'],
             ['sepia', 'lang:tipowerup.darkmode::default.label_sepia', 'nullable|integer|min:0|max:200'],
             ['schedule_enabled', 'lang:tipowerup.darkmode::default.label_schedule_enabled', 'nullable|boolean'],
-            ['schedule_type', 'lang:tipowerup.darkmode::default.label_schedule_type', 'nullable|string|in:time,sunset_sunrise'],
+            ['schedule_type', 'lang:tipowerup.darkmode::default.label_schedule_type', 'nullable|string|in:time,sunset_sunrise,system'],
             ['start_time', 'lang:tipowerup.darkmode::default.label_start_time', 'nullable|date_format:H:i'],
             ['end_time', 'lang:tipowerup.darkmode::default.label_end_time', 'nullable|date_format:H:i'],
             ['latitude', 'lang:tipowerup.darkmode::default.label_latitude', 'required_if:schedule_type,sunset_sunrise|nullable|numeric|min:-90|max:90'],

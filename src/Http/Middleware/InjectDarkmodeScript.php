@@ -18,11 +18,11 @@ class InjectDarkmodeScript
         $response = $next($request);
 
         // Only process standard HTTP responses, not binary/streamed responses
-        if (!$response instanceof IlluminateResponse) {
+        if (! $response instanceof IlluminateResponse) {
             return $response;
         }
 
-        if (!$this->shouldInject($response)) {
+        if (! $this->shouldInject($response)) {
             return $response;
         }
 
@@ -33,11 +33,11 @@ class InjectDarkmodeScript
 
     protected function shouldInject(IlluminateResponse $response): bool
     {
-        if (!str_contains($response->headers->get('Content-Type') ?? '', 'text/html')) {
+        if (! str_contains($response->headers->get('Content-Type') ?? '', 'text/html')) {
             return false;
         }
 
-        if (!Settings::isEnabled()) {
+        if (! Settings::isEnabled()) {
             return false;
         }
 
@@ -55,7 +55,13 @@ class InjectDarkmodeScript
             return;
         }
 
-        $scheduleHint = Settings::shouldScheduleBeActive() ? 'true' : 'false';
+        $isSystemSchedule = Settings::scheduleType() === 'system'
+            && (bool) Settings::get('schedule_enabled', false);
+
+        // For system schedule, detect OS preference inline; otherwise use server-side hint
+        $scheduleHint = $isSystemSchedule
+            ? 'window.matchMedia("(prefers-color-scheme: dark)").matches'
+            : (Settings::shouldScheduleBeActive() ? 'true' : 'false');
 
         // Anti-flicker: hides body with dark background, checks localStorage for active state
         // (ti_darkmode_active → preference → schedule hint), then exposes __tiDmReady() for
